@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">VeloRoute</title>
+  <desc id="desc">A high-speed routing mark with layered forward lanes.</desc>
+  <defs>
+    <linearGradient id="bg" x1="64" y1="52" x2="448" y2="460" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071728"/>
+      <stop offset="0.54" stop-color="#0a1020"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="lane" x1="100" y1="132" x2="426" y2="378" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3df5c8"/>
+      <stop offset="0.48" stop-color="#20d3ff"/>
+      <stop offset="1" stop-color="#5b7cff"/>
+    </linearGradient>
+    <linearGradient id="lane2" x1="108" y1="316" x2="394" y2="134" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8cfce4"/>
+      <stop offset="1" stop-color="#2f8cff"/>
+    </linearGradient>
+    <filter id="glow" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#18c8ff" flood-opacity="0.26"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#b7fff2" flood-opacity="0.44"/>
+    </filter>
+  </defs>
+
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bg)"/>
+  <path d="M88 166h94c32 0 59 12 80 36l118 135" fill="none" stroke="#21314f" stroke-width="26" stroke-linecap="round" opacity="0.62"/>
+  <path d="M92 350h86c38 0 68-12 94-38l92-92" fill="none" stroke="#21314f" stroke-width="26" stroke-linecap="round" opacity="0.62"/>
+
+  <g filter="url(#glow)">
+    <path d="M104 174h87c34 0 61 13 83 39l101 121" fill="none" stroke="url(#lane)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M333 289l48 48-56 42" fill="none" stroke="url(#lane)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M104 338h74c36 0 67-13 93-39l98-98" fill="none" stroke="url(#lane2)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M322 160l54 42-45 52" fill="none" stroke="url(#lane2)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <circle cx="106" cy="174" r="11" fill="#ddfff8" opacity="0.95"/>
+  <circle cx="104" cy="338" r="11" fill="#ddfff8" opacity="0.95"/>
+</svg>

@@ -68,6 +68,12 @@ function simulateGuard(
 
   // 不需要认证的路由
   if (!requiresAuth) {
+    if (toPath === '/home') {
+      return authState.isAuthenticated
+        ? (authState.isAdmin ? '/admin/dashboard' : '/dashboard')
+        : '/login'
+    }
+
     if (
       authState.isAuthenticated &&
       (toPath === '/login' || toPath === '/register')
@@ -153,6 +159,15 @@ describe('路由守卫逻辑', () => {
     setActivePinia(createPinia())
   })
 
+  describe('入口路由', () => {
+    it('根路径重定向到 /login', async () => {
+      const { default: router } = await import('@/router')
+      const route = router.getRoutes().find((record) => record.path === '/')
+
+      expect(route?.redirect).toBe('/login')
+    })
+  })
+
   // --- 未认证用户 ---
 
   describe('未认证用户', () => {
@@ -179,9 +194,9 @@ describe('路由守卫逻辑', () => {
       expect(redirect).toBeNull()
     })
 
-    it('访问 /home 公开页面允许通过', () => {
+    it('访问 /home 重定向到 /login', () => {
       const redirect = simulateGuard('/home', { requiresAuth: false }, authState)
-      expect(redirect).toBeNull()
+      expect(redirect).toBe('/login')
     })
   })
 
@@ -209,6 +224,11 @@ describe('路由守卫逻辑', () => {
     it('访问 /dashboard 允许通过', () => {
       const redirect = simulateGuard('/dashboard', {}, authState)
       expect(redirect).toBeNull()
+    })
+
+    it('访问 /home 重定向到 /dashboard', () => {
+      const redirect = simulateGuard('/home', { requiresAuth: false }, authState)
+      expect(redirect).toBe('/dashboard')
     })
 
     it('访问管理页面被拒绝，重定向到 /dashboard', () => {
@@ -246,6 +266,11 @@ describe('路由守卫逻辑', () => {
     it('访问用户页面允许通过', () => {
       const redirect = simulateGuard('/dashboard', {}, authState)
       expect(redirect).toBeNull()
+    })
+
+    it('访问 /home 重定向到 /admin/dashboard', () => {
+      const redirect = simulateGuard('/home', { requiresAuth: false }, authState)
+      expect(redirect).toBe('/admin/dashboard')
     })
   })
 

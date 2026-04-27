@@ -48,6 +48,32 @@ func (s *settingPublicRepoStub) Delete(ctx context.Context, key string) error {
 	panic("unexpected Delete call")
 }
 
+func TestSettingService_GetPublicSettings_UsesVeloRouteBrandDefaults(t *testing.T) {
+	svc := NewSettingService(&settingPublicRepoStub{values: map[string]string{}}, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "VeloRoute", settings.SiteName)
+	require.Equal(t, "/logo.svg", settings.SiteLogo)
+	require.Equal(t, "High-speed AI Routing Gateway", settings.SiteSubtitle)
+}
+
+func TestSettingService_GetPublicSettings_NormalizesLegacySub2APIBrand(t *testing.T) {
+	svc := NewSettingService(&settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeySiteName:     "Sub2API",
+			SettingKeySiteLogo:     "",
+			SettingKeySiteSubtitle: "Subscription to API Conversion Platform",
+		},
+	}, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "VeloRoute", settings.SiteName)
+	require.Equal(t, "/logo.svg", settings.SiteLogo)
+	require.Equal(t, "High-speed AI Routing Gateway", settings.SiteSubtitle)
+}
+
 func TestSettingService_GetPublicSettings_ExposesRegistrationEmailSuffixWhitelist(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{

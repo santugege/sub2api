@@ -252,6 +252,31 @@ describe('useAppStore', () => {
   // --- 公开设置 ---
 
   describe('公开设置加载', () => {
+    it('默认品牌使用 VeloRoute 和默认 SVG 标识', () => {
+      const store = useAppStore()
+
+      expect(store.siteName).toBe('VeloRoute')
+      expect(store.siteLogo).toBe('/logo.svg')
+    })
+
+    it('注入旧默认品牌时归一化为 VeloRoute', () => {
+      const windowAny = window as any
+      windowAny.__APP_CONFIG__ = {
+        site_name: 'Sub2API',
+        site_logo: '',
+        site_subtitle: 'Subscription to API Conversion Platform',
+      }
+
+      const store = useAppStore()
+      const result = store.initFromInjectedConfig()
+
+      expect(result).toBe(true)
+      expect(store.siteName).toBe('VeloRoute')
+      expect(store.siteLogo).toBe('/logo.svg')
+      expect(store.cachedPublicSettings?.site_name).toBe('VeloRoute')
+      expect(store.cachedPublicSettings?.site_subtitle).toBe('High-speed AI Routing Gateway')
+    })
+
     it('从 window.__APP_CONFIG__ 初始化', () => {
       const windowAny = window as any
       windowAny.__APP_CONFIG__ = {
