@@ -148,7 +148,7 @@ security:
 gateway:
   # Timeout for waiting upstream response headers (seconds)
   # 等待上游响应头超时时间（秒）
-  response_header_timeout: 600
+  response_header_timeout: 1800
   # Max request body size in bytes (default: 256MB)
   # 请求体最大字节数（默认 256MB）
   max_body_size: 268435456
@@ -279,7 +279,7 @@ gateway:
     oauth_max_conns_factor: 1.0
     apikey_max_conns_factor: 1.0
     dial_timeout_seconds: 10
-    read_timeout_seconds: 900
+    read_timeout_seconds: 1800
     write_timeout_seconds: 120
     pool_target_utilization: 0.7
     queue_limit_per_conn: 64
@@ -350,7 +350,7 @@ gateway:
   stream_keepalive_interval: 10
   # Image stream data interval timeout (seconds), 0=disable; independent from ordinary text streams
   # 图片流数据间隔超时（秒），0=禁用；独立于普通文本流式
-  image_stream_data_interval_timeout: 900
+  image_stream_data_interval_timeout: 1800
   # Image stream keepalive interval (seconds), 0=disable; independent from ordinary text streams
   # 图片流式 keepalive 间隔（秒），0=禁用；独立于普通文本流式
   image_stream_keepalive_interval: 10

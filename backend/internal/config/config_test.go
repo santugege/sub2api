@@ -1801,17 +1801,23 @@ func TestLoad_DefaultGatewayImageStreamConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error: %v", err)
 	}
+	if cfg.Gateway.ResponseHeaderTimeout != 1800 {
+		t.Fatalf("response_header_timeout = %d, want 1800", cfg.Gateway.ResponseHeaderTimeout)
+	}
 	if cfg.Gateway.StreamDataIntervalTimeout != 180 {
 		t.Fatalf("stream_data_interval_timeout = %d, want 180", cfg.Gateway.StreamDataIntervalTimeout)
 	}
 	if cfg.Gateway.StreamKeepaliveInterval != 10 {
 		t.Fatalf("stream_keepalive_interval = %d, want 10", cfg.Gateway.StreamKeepaliveInterval)
 	}
-	if cfg.Gateway.ImageStreamDataIntervalTimeout != 900 {
-		t.Fatalf("image_stream_data_interval_timeout = %d, want 900", cfg.Gateway.ImageStreamDataIntervalTimeout)
+	if cfg.Gateway.ImageStreamDataIntervalTimeout != 1800 {
+		t.Fatalf("image_stream_data_interval_timeout = %d, want 1800", cfg.Gateway.ImageStreamDataIntervalTimeout)
 	}
 	if cfg.Gateway.ImageStreamKeepaliveInterval != 10 {
 		t.Fatalf("image_stream_keepalive_interval = %d, want 10", cfg.Gateway.ImageStreamKeepaliveInterval)
+	}
+	if cfg.Gateway.OpenAIWS.ReadTimeoutSeconds != 1800 {
+		t.Fatalf("openai_ws.read_timeout_seconds = %d, want 1800", cfg.Gateway.OpenAIWS.ReadTimeoutSeconds)
 	}
 	if cfg.Gateway.ImageConcurrency.Enabled {
 		t.Fatalf("image_concurrency.enabled = true, want false")
