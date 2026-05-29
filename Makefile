@@ -1,4 +1,4 @@
-.PHONY: build build-backend build-frontend build-datamanagementd test test-backend test-frontend test-frontend-critical test-datamanagementd secret-scan
+.PHONY: build build-backend build-frontend build-datamanagementd test test-deploy-config test-backend test-frontend test-frontend-critical test-datamanagementd secret-scan
 
 FRONTEND_CRITICAL_VITEST := \
 	src/views/auth/__tests__/LinuxDoCallbackView.spec.ts \
@@ -24,7 +24,10 @@ build-datamanagementd:
 	@cd datamanagement && go build -o datamanagementd ./cmd/datamanagementd
 
 # 运行测试（后端 + 前端）
-test: test-backend test-frontend
+test: test-deploy-config test-backend test-frontend
+
+test-deploy-config:
+	@node tools/check_docker_pnpm_config.mjs
 
 test-backend:
 	@$(MAKE) -C backend test
