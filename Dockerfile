@@ -24,7 +24,7 @@ ENV NODE_OPTIONS=${FRONTEND_NODE_OPTIONS}
 
 WORKDIR /app/frontend
 
-# Install pnpm
+# Install pnpm (pinned to packageManager for reproducible Docker builds)
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 # Install dependencies first (better caching)
