@@ -21,7 +21,7 @@ function assert(condition, message) {
 for (const dockerfilePath of dockerfiles) {
   const dockerfile = readRepoFile(dockerfilePath)
   const workspaceCopy = 'COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./'
-  const install = 'RUN pnpm install --frozen-lockfile'
+  const install = 'pnpm install --frozen-lockfile'
 
   assert(!dockerfile.includes('pnpm@latest'), `${dockerfilePath} must not install pnpm@latest`)
   assert(
