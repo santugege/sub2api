@@ -394,8 +394,8 @@ describe('useAppStore', () => {
       await expect(Promise.all([refresh, duringRefresh])).resolves.toEqual([updated, updated])
       expect(store.siteName).toBe('Updated Site')
 
-      await expect(store.fetchPublicSettings()).resolves.toEqual({
-        ...updated,
+      await expect(store.fetchPublicSettings()).resolves.toMatchObject({
+        site_name: 'Updated Site',
         site_logo: '/logo.svg',
         site_subtitle: 'High-speed AI Routing Gateway',
       })

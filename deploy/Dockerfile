@@ -22,7 +22,8 @@ ARG PNPM_VERSION
 WORKDIR /app/frontend
 ENV NODE_OPTIONS=--max-old-space-size=1536
 
-# Install pnpm
+# Install pnpm. Keep this pinned to the lockfile-compatible major version so
+# Docker builds remain reproducible when pnpm changes config validation rules.
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 # Install dependencies first (better caching)

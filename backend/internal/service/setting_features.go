@@ -173,9 +173,9 @@ func (s *SettingService) IsTotpEncryptionKeyConfigured() bool {
 func (s *SettingService) GetSiteName(ctx context.Context) string {
 	value, err := s.settingRepo.GetValue(ctx, SettingKeySiteName)
 	if err != nil || value == "" {
-		return "Sub2API"
+		return defaultSiteName
 	}
-	return value
+	return normalizeBrandSiteName(value)
 }
 
 // GetDefaultConcurrency 获取默认并发量
