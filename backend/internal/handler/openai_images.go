@@ -142,6 +142,10 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 	failedAccountIDs := make(map[int64]struct{})
 	sameAccountRetryCount := make(map[int64]int)
 	var lastFailoverErr *service.UpstreamFailoverError
+	stopJSONKeepalive := func() {}
+	jsonKeepaliveStarted := false
+	defer func() { stopJSONKeepalive() }()
+	var oauth429FailoverState service.OpenAIOAuth429FailoverState
 
 	for {
 		reqLog.Debug("openai.images.account_selecting", zap.Int("excluded_account_count", len(failedAccountIDs)))
@@ -154,13 +158,24 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 			parsed.RequiredCapability,
 		)
 		if err != nil {
+			if failoverClientGone(c) {
+				reqLog.Info("openai.images.account_select_aborted_client_disconnected", zap.Error(err))
+				return
+			}
 			reqLog.Warn("openai.images.account_select_failed",
 				zap.Error(err),
 				zap.Int("excluded_account_count", len(failedAccountIDs)),
 			)
 			if len(failedAccountIDs) == 0 {
-				markOpsRoutingCapacityLimitedIfNoAvailable(c, err)
-				h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "No available compatible accounts", streamStarted)
+				cls := classifyNoAccountErrorFromGin(c, h.gatewayService, apiKey, requestModel, requestModel, service.PlatformOpenAI)
+				if !cls.ModelNotFound {
+					markOpsRoutingCapacityLimitedIfNoAvailable(c, err)
+				}
+				message := cls.Message
+				if !cls.ModelNotFound {
+					message = "No available compatible accounts"
+				}
+				h.handleStreamingAwareError(c, cls.Status, cls.ErrType, message, streamStarted)
 				return
 			}
 			if lastFailoverErr != nil {
@@ -171,8 +186,15 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 			return
 		}
 		if selection == nil || selection.Account == nil {
-			markOpsRoutingCapacityLimited(c)
-			h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "No available compatible accounts", streamStarted)
+			cls := classifyNoAccountErrorFromGin(c, h.gatewayService, apiKey, requestModel, requestModel, service.PlatformOpenAI)
+			if !cls.ModelNotFound {
+				markOpsRoutingCapacityLimited(c)
+			}
+			message := cls.Message
+			if !cls.ModelNotFound {
+				message = "No available compatible accounts"
+			}
+			h.handleStreamingAwareError(c, cls.Status, cls.ErrType, message, streamStarted)
 			return
 		}
 
@@ -196,7 +218,12 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 		}
 
 		service.SetOpsLatencyMs(c, service.OpsRoutingLatencyMsKey, time.Since(routingStart).Milliseconds())
+		if !parsed.Stream && !jsonKeepaliveStarted {
+			stopJSONKeepalive = service.StartOpenAIImagesJSONKeepalive(c, h.openAIImagesJSONKeepaliveInterval())
+			jsonKeepaliveStarted = true
+		}
 		forwardStart := time.Now()
+		writerSizeBeforeForward := service.OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c)
 		result, err := func() (*service.OpenAIForwardResult, error) {
 			defer func() {
 				if accountReleaseFunc != nil {
@@ -225,8 +252,13 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 			} else {
 				var imageUpstreamErr *service.OpenAIImagesUpstreamError
 				if errors.As(err, &imageUpstreamErr) {
-					h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, true, nil)
-					reqLog.Warn("openai.images.upstream_user_error",
+					retryableServerError := service.IsOpenAIImagesRetryableUpstreamError(imageUpstreamErr)
+					h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, !retryableServerError, nil)
+					logEvent := "openai.images.upstream_user_error"
+					if retryableServerError {
+						logEvent = "openai.images.upstream_server_error_after_flush"
+					}
+					reqLog.Warn(logEvent,
 						zap.Int64("account_id", account.ID),
 						zap.Int("status_code", imageUpstreamErr.StatusCode),
 						zap.String("error_type", imageUpstreamErr.ErrorType),
@@ -238,6 +270,21 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 				var failoverErr *service.UpstreamFailoverError
 				if errors.As(err, &failoverErr) {
 					h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+					if service.OpenAIImagesJSONKeepaliveAdjustedWrittenSize(c) != writerSizeBeforeForward {
+						reqLog.Warn("openai.images.upstream_failover_skipped_after_flush",
+							zap.Int64("account_id", account.ID),
+							zap.Int("upstream_status", failoverErr.StatusCode),
+						)
+						h.handleFailoverExhausted(c, failoverErr, true)
+						return
+					}
+					if failoverClientGone(c) {
+						reqLog.Info("openai.images.failover_aborted_client_disconnected",
+							zap.Int64("account_id", account.ID),
+							zap.Int("upstream_status", failoverErr.StatusCode),
+						)
+						return
+					}
 					if failoverErr.RetryableOnSameAccount {
 						retryLimit := account.GetPoolModeRetryCount()
 						if sameAccountRetryCount[account.ID] < retryLimit {
@@ -264,7 +311,7 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 						return
 					}
 					switchCount++
-					if h.gatewayService.ShouldStopOpenAIOAuth429Failover(account, failoverErr.StatusCode, switchCount) {
+					if h.gatewayService.ShouldStopOpenAIOAuth429Failover(account, failoverErr.StatusCode, switchCount, &oauth429FailoverState) {
 						h.handleFailoverExhausted(c, failoverErr, streamStarted)
 						return
 					}
@@ -277,10 +324,15 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 					continue
 				}
 				h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
-				wroteFallback := h.ensureForwardErrorResponse(c, streamStarted)
+				upstreamErrorAlreadyCommunicated := openAIForwardErrorAlreadyCommunicated(c, writerSizeBeforeForward, err)
+				wroteFallback := false
+				if !upstreamErrorAlreadyCommunicated {
+					wroteFallback = h.ensureForwardErrorResponse(c, streamStarted)
+				}
 				fields := []zap.Field{
 					zap.Int64("account_id", account.ID),
 					zap.Bool("fallback_error_response_written", wroteFallback),
+					zap.Bool("upstream_error_response_already_written", upstreamErrorAlreadyCommunicated),
 					zap.Error(err),
 				}
 				if shouldLogOpenAIForwardFailureAsWarn(c, wroteFallback) {
@@ -292,7 +344,8 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 			}
 		}
 		if result != nil {
-			if account.Type == service.AccountTypeOAuth {
+			// 排除 spark 影子:其 codex_* 仅由 QueryUsage(/wham/usage bengalfox)更新(外审第7轮 P1)。
+			if account.Type == service.AccountTypeOAuth && !account.IsShadow() {
 				h.gatewayService.UpdateCodexUsageSnapshotFromHeaders(c.Request.Context(), account.ID, result.ResponseHeaders)
 			}
 			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, true, result.FirstTokenMs)
@@ -308,6 +361,7 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 		}
 		inboundEndpoint := GetInboundEndpoint(c)
 		upstreamEndpoint := GetUpstreamEndpoint(c, account.Platform)
+		quotaPlatform := service.QuotaPlatform(c.Request.Context(), apiKey)
 
 		upstreamModel := ""
 		if result != nil {
@@ -326,6 +380,7 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 				IPAddress:          clientIP,
 				RequestPayloadHash: requestPayloadHash,
 				APIKeyService:      h.apiKeyService,
+				QuotaPlatform:      quotaPlatform,
 				ChannelUsageFields: channelMapping.ToUsageFields(requestModel, upstreamModel),
 			}); err != nil {
 				logger.L().With(
@@ -345,6 +400,13 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 		)
 		return
 	}
+}
+
+func (h *OpenAIGatewayHandler) openAIImagesJSONKeepaliveInterval() time.Duration {
+	if h.cfg == nil || h.cfg.Gateway.ImageNonstreamKeepaliveInterval <= 0 {
+		return 0
+	}
+	return time.Duration(h.cfg.Gateway.ImageNonstreamKeepaliveInterval) * time.Second
 }
 
 func isMultipartImagesContentType(contentType string) bool {
