@@ -161,7 +161,8 @@ services:
       # Gateway values come from Compose .env or the shell.
       # Fallbacks mirror Sub2API backend defaults so omitted values preserve behavior.
       - GATEWAY_FORCE_CODEX_CLI=${GATEWAY_FORCE_CODEX_CLI:-false}
-      - GATEWAY_OPENAI_COMPACT_MODEL=${GATEWAY_OPENAI_COMPACT_MODEL:-gpt-5.4}
+      - GATEWAY_OPENAI_COMPACT_MODEL=${GATEWAY_OPENAI_COMPACT_MODEL:-gpt-5.5}
+      - SUB2API_IMAGES_MAIN_MODEL=${SUB2API_IMAGES_MAIN_MODEL:-gpt-5.6-luna}
       # OpenAI HTTP upstream protocol/timeout
       - GATEWAY_RESPONSE_HEADER_TIMEOUT=${GATEWAY_RESPONSE_HEADER_TIMEOUT:-1800}
       - GATEWAY_OPENAI_WS_READ_TIMEOUT_SECONDS=${GATEWAY_OPENAI_WS_READ_TIMEOUT_SECONDS:-1800}

@@ -514,38 +514,46 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 		{
 			name:              "deepseek v4 flash",
 			model:             "deepseek-v4-flash",
-			expectedInput:     2.2e-7,
-			expectedOutput:    floatPtr(6.6e-7),
-			expectedCacheRead: floatPtr(7e-9),
+			expectedInput:     1.5e-7,
+			expectedOutput:    floatPtr(6e-7),
+			expectedCacheRead: floatPtr(3e-9),
+		},
+		{
+			// deepseek-flash（= V4.1-Flash 新名）经前缀兜底同样命中 flash 价卡。
+			name:              "deepseek flash v41 name maps to flash",
+			model:             "deepseek-flash",
+			expectedInput:     1.5e-7,
+			expectedOutput:    floatPtr(6e-7),
+			expectedCacheRead: floatPtr(3e-9),
 		},
 		{
 			name:              "deepseek v4 flash vision exp",
 			model:             "deepseek-v4-flash-vision-exp",
-			expectedInput:     2.2e-7,
-			expectedOutput:    floatPtr(6.6e-7),
-			expectedCacheRead: floatPtr(7e-9),
+			expectedInput:     1.5e-7,
+			expectedOutput:    floatPtr(6e-7),
+			expectedCacheRead: floatPtr(3e-9),
 		},
 		{
 			// deepseek-chat / deepseek-reasoner 已停止服务，统一按 flash 价兜底。
 			name:              "deepseek chat discontinued maps to flash",
 			model:             "deepseek-chat",
-			expectedInput:     2.2e-7,
-			expectedOutput:    floatPtr(6.6e-7),
-			expectedCacheRead: floatPtr(7e-9),
+			expectedInput:     1.5e-7,
+			expectedOutput:    floatPtr(6e-7),
+			expectedCacheRead: floatPtr(3e-9),
 		},
 		{
 			name:              "deepseek reasoner discontinued maps to flash",
 			model:             "deepseek-reasoner",
-			expectedInput:     2.2e-7,
-			expectedOutput:    floatPtr(6.6e-7),
-			expectedCacheRead: floatPtr(7e-9),
+			expectedInput:     1.5e-7,
+			expectedOutput:    floatPtr(6e-7),
+			expectedCacheRead: floatPtr(3e-9),
 		},
 		{
 			name:              "unknown deepseek maps to flash",
 			model:             "deepseek-foo",
-			expectedInput:     2.2e-7,
-			expectedOutput:    floatPtr(6.6e-7),
-			expectedCacheRead: floatPtr(7e-9),
+			expectedInput:     1.5e-7,
+			expectedOutput:    floatPtr(6e-7),
+			expectedCacheRead: floatPtr(3e-9),
 		},
 
 		// ---- 智谱 GLM（z.ai USD 口径）----
@@ -1799,8 +1807,7 @@ func TestGetModelPricing_Fable51FallbackPricing(t *testing.T) {
 	require.InDelta(t, 12.5e-6, pricing.CacheCreation5mPrice, 1e-12)
 	require.InDelta(t, 20e-6, pricing.CacheCreation1hPrice, 1e-12)
 	require.InDelta(t, 0.25e-6, pricing.CacheReadPricePerToken, 1e-12)
-	require.NotNil(t, pricing.MaxReasoningEffortMultiplier)
-	require.Equal(t, 3.0, *pricing.MaxReasoningEffortMultiplier)
+	require.Empty(t, pricing.ReasoningEffortMultipliers)
 }
 
 func TestGetModelPricingWithChannel_CacheReadPriceAffectsPriority(t *testing.T) {
